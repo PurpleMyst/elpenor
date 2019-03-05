@@ -6,7 +6,7 @@ fromList :: [a] -> Zipper a
 fromList = flip Zipper []
 
 toList :: Zipper a -> [a]
-toList (Zipper l r) = l ++ r
+toList (Zipper l r) = l ++ (reverse r)
 
 zipLeft :: Zipper a -> Zipper a
 zipLeft (Zipper l r) = Zipper (head r : l) (tail r)
@@ -18,7 +18,7 @@ current :: Zipper a -> a
 current (Zipper l _) = head l
 
 getOffset :: Zipper a -> Int
-getOffset (Zipper l _) = length l
+getOffset (Zipper _ r) = length r
 
 setOffset :: Zipper a -> Int -> Zipper a
 setOffset z n

@@ -1,6 +1,7 @@
 module Parser(parse) where
 
 import Control.Monad.State.Lazy
+import Data.Char (isSpace)
 
 import AST
 import qualified Zipper as Z
@@ -35,8 +36,45 @@ char c = Parser $ \z -> if Z.current z == c
                         then Right ((), Z.zipRight z) 
                         else Left $ "Expected '" ++ [c] ++ "' at index " ++ (show (Z.getOffset z)) ++ ", found '" ++ [Z.current z] ++ "'"
 
-runParser :: Parser a -> String -> Either ErrorMsg (a, String)
-runParser (Parser f) s = (fmap . fmap) Z.toList (f $ Z.fromList s)
+
+takeWhile :: (Char -> Bool) -> Parser String
+takeWhile f = Parser go
+  where
+    go z
+        | null (Z.right z) = Right ([], z)
+        | f c            = let (Right (s, z')) = go (Z.zipRight z) in Right (c : s, z')
+        | otherwise      = Right ([], z)
+      where
+        c = Z.current z
+
+takeUntil :: (Char -> Bool) -> Parser String
+takeUntil = Parser.takeWhile . fmap not
+
+skipWhile :: (Char -> Bool) -> Parser ()
+skipWhile f = Parser go
+  where
+    go z
+        | null (Z.right z) = Right ((), z)
+        | f c              = go (Z.zipRight z)
+        | otherwise        = Right ((), z)
+      where
+        c = Z.current z
+
+skipUntil :: (Char -> Bool) -> Parser ()
+skipUntil = Parser.skipWhile . fmap not
+
+runParser :: Parser a -> String -> Either ErrorMsg (a, ZString)
+runParser (Parser f) s = f (Z.fromList s)
+
+-- example parser
+addition :: Parser Integer
+addition = do
+  a <- read <$> takeUntil isSpace
+  skipWhile isSpace
+  char '+'
+  skipWhile isSpace
+  b <- read <$> takeUntil isSpace
+  return (a + b)
 
 parse :: String -> AST
 parse = const AST

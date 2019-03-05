@@ -36,6 +36,9 @@ char c = Parser $ \z -> if Z.current z == c
                         then Right ((), Z.zipRight z) 
                         else Left $ "Expected '" ++ [c] ++ "' at index " ++ (show (Z.getOffset z)) ++ ", found '" ++ [Z.current z] ++ "'"
 
+token :: String -> Parser ()
+token []    = Parser $ \z -> Right ((), z)
+token (c:s) = char c >> token s
 
 takeWhile :: (Char -> Bool) -> Parser String
 takeWhile f = Parser go
@@ -63,18 +66,16 @@ skipWhile f = Parser go
 skipUntil :: (Char -> Bool) -> Parser ()
 skipUntil = Parser.skipWhile . fmap not
 
+skipWhitespace :: Parser ()
+skipWhitespace = skipWhile isSpace
+
 runParser :: Parser a -> String -> Either ErrorMsg (a, ZString)
 runParser (Parser f) s = f (Z.fromList s)
 
--- example parser
-addition :: Parser Integer
-addition = do
-  a <- read <$> takeUntil isSpace
-  skipWhile isSpace
-  char '+'
-  skipWhile isSpace
-  b <- read <$> takeUntil isSpace
-  return (a + b)
+program :: Parser AST
+program = undefined
 
 parse :: String -> AST
-parse = const AST
+parse s = case runParser program s of
+    Left e         -> error e
+    Right (ast, _) -> ast

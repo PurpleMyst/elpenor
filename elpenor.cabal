@@ -54,7 +54,7 @@ executable elpenor
   other-modules: AST Compiler Parser Zipper
 
   -- LANGUAGE extensions used by modules in this package.
-  -- other-extensions:
+  other-extensions: ViewPatterns
 
   -- Other library packages from which modules are imported.
   build-depends:       base ^>=4.12.0.0, mtl, containers, data-default, bytestring

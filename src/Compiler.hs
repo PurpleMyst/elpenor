@@ -1,3 +1,4 @@
+{-# LANGUAGE ViewPatterns #-}
 module Compiler where
 
 import Control.Monad.State.Lazy
@@ -176,42 +177,60 @@ opcode "BUILD_TUPLE_UNPACK_WITH_CALL" = 158
 -- }}}
 
 
-addOpcode :: String -> Word8 -> State CodeObject ()
+addOpcode :: Integral a => String -> a -> State CodeObject ()
 -- NB: Opcode/arg must be reversed so that they are correct later.
-addOpcode opname arg = modify (\co -> co { co_code = B.cons arg $ B.cons (opcode opname) $ co_code co })
+addOpcode opname arg = modify (\co -> co { co_code = B.cons (fromIntegral arg) $ B.cons (opcode opname) $ co_code co })
 
 minimumStackSize :: (Integral a) => a -> State CodeObject ()
-minimumStackSize n' = modify (\co -> co { co_stacksize = if co_stacksize co < n then n else co_stacksize co })
-  where
-    n = fromIntegral n'
+minimumStackSize (fromIntegral -> n) = modify (\co -> co { co_stacksize = if co_stacksize co < n then n else co_stacksize co })
+
+addName :: Integral a => String -> State CodeObject a
+addName name = do
+    co <- get
+
+    if name `elem` co_names co
+      then do
+        let Just idx = name `elemIndex` co_names co
+        return $ fromIntegral $ length (co_names co) - (idx + 1)
+      else do
+        put $ co { co_names = name : co_names co }
+        return $ fromIntegral $ length (co_names co)
+
+addConst :: Integral a => AST -> State CodeObject a
+addConst ast = do
+    co <- get
+    if ast `elem` co_consts co
+      then do
+        let Just idx = ast `elemIndex` co_consts co
+        return $ fromIntegral $ length (co_consts co) - (idx + 1)
+      else do
+        put $ co { co_consts = ast : co_consts co }
+        return $ fromIntegral $ length (co_consts co)
+
 
 compile' :: AST -> State CodeObject ()
+
 compile' (Program xs) = mapM_ compile' xs >> addOpcode "RETURN_VALUE" 0
 
-compile' (Identifier name) = addName >>= addOpcode "LOAD_NAME"
-  where
-    addName = fromIntegral <$> do
-        co <- get
+compile' (Identifier name) = addName name >>= addOpcode "LOAD_NAME"
 
-        if name `elem` co_names co
-          then do
-            let Just idx = traceShowId <$> name `elemIndex` co_names co
-            return $ length (co_names co) - (idx + 1)
-          else do
-            put $ co { co_names = name : co_names co }
-            return $ length (co_names co)
+compile' ast@(Number _) = addConst ast >>= addOpcode "LOAD_CONST"
+compile' ast@(String _) = addConst ast >>= addOpcode "LOAD_CONST"
 
-compile' (FunctionCall name args) = 
-  compile' name >>
-  mapM_ compile' args >>
-  minimumStackSize (length args + 1) >>
+compile' (FunctionCall name args) = do
+  compile' name
+  mapM_ compile' args
+  minimumStackSize (length args + 1)
   addOpcode "CALL_FUNCTION" (fromIntegral $ length args)
 
 compile :: String -> CodeObject
 compile = cleanUp . flip execState co . compile' . parse
   where
     -- FIXME: Pretty much need to reverse *everything*
-    cleanUp co = co { co_code = B.reverse (co_code co), co_names = reverse (co_names co) }
+    cleanUp co = co { co_code = B.reverse (co_code co)
+                    , co_names = reverse (co_names co)
+                    , co_consts = reverse (co_consts co)
+                    }
 
     co = CodeObject
                 { co_argcount       = 0

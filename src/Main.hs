@@ -1,6 +1,6 @@
 module Main where
 
-import Parser (parse)
+import Compiler (compile)
 
 main :: IO ()
-main = print $ parse "hello world"
+main = print $ compile "print(print)"

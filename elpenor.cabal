@@ -57,7 +57,7 @@ executable elpenor
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base ^>=4.12.0.0, mtl
+  build-depends:       base ^>=4.12.0.0, mtl, containers, data-default, bytestring
 
   -- Directories containing source files.
   hs-source-dirs:      src

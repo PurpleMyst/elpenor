@@ -1,9 +1,9 @@
-module Zipper(Zipper, fromList, left, right , zipLeft, zipRight, getOffset, setOffset, current) where
+module Zipper(Zipper, fromList, left, right , zipLeft, zipRight, getOffset, setOffset, current, maybeCurrent) where
 
 data Zipper a = Zipper [a] [a] deriving Show
 
 fromList :: [a] -> Zipper a
-fromList r = Zipper [] r
+fromList = Zipper []
 
 left :: Zipper a -> [a]
 left (Zipper l _) = l
@@ -12,13 +12,17 @@ right :: Zipper a -> [a]
 right (Zipper _ r) = reverse r
 
 zipRight :: Zipper a -> Zipper a
-zipRight (Zipper l r) = Zipper (head r : l) (tail r)
+zipRight (Zipper l (x:r)) = Zipper (x : l) r
 
 zipLeft :: Zipper a -> Zipper a
-zipLeft (Zipper l r) = Zipper (tail l) (head l : r)
+zipLeft (Zipper (x:l) r) = Zipper l (x : r)
 
 current :: Zipper a -> a
-current (Zipper _ r) = head r
+current (Zipper _ (x:_)) = x
+
+maybeCurrent :: Zipper a -> Maybe a
+maybeCurrent (Zipper _ (x:_)) = Just x
+maybeCurrent (Zipper _ [])    = Nothing
 
 getOffset :: Zipper a -> Int
 getOffset (Zipper l _) = length l

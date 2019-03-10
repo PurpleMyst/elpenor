@@ -73,9 +73,8 @@ test-suite test-elpenor
     type: exitcode-stdio-1.0
 
     main-is: Spec.hs
-    other-modules: MarshalSpec
-    hs-source-dirs:
-        test
+    other-modules: MarshalSpec CompilerSpec
+    hs-source-dirs: test
 
     build-depends: base ^>=4.12.0.0, hspec, bytestring, elpenor, temporary, process, QuickCheck
     build-tool-depends: hspec-discover:hspec-discover

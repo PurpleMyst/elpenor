@@ -1,9 +1,8 @@
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE TypeApplications #-}
 module Marshal(Marshal(..), MarshalWithType(..)) where
 
-import Data.Binary (encode)
-import Data.Bits
-import Data.Char
+import Data.Binary
+import Data.Int
 import Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as B
 
@@ -22,38 +21,34 @@ class Marshal a => MarshalWithType a where
 instance Marshal ByteString where
   marshal s =
     B.append
-    (marshal (toInteger $ B.length s))
+    (marshal @Int32 $ fromIntegral $ B.length s)
     s
 
 instance MarshalWithType ByteString where
   typeChar = const 's'
 
-instance Marshal Integer where
-  marshal n
-      | n < 0xFFFFFFFF = B.pack [go 0, go 1, go 2, go 3]
-      | otherwise      = error "can not marshal integrals larger than 32 bits"
-    where
-      go (fromInteger -> x) = chr $ (fromInteger n .&. (0xFF `shiftL` (8 * x))) `shiftR` (8 * x)
+instance Marshal Int32 where
+  marshal = B.reverse . encode
 
-instance MarshalWithType Integer where
-  typeChar n
-    | n < 0xFFFFFFFF = 'i'
-    | otherwise      = error "can not marshal integrals larger than 32 bits"
+instance MarshalWithType Int32 where
+  typeChar = const 'i'
 
 instance Marshal AST where
-  marshal (String s)     = marshal (B.drop 8 $ encode s)
-  marshal (Identifier s) = marshal (String s)
+  marshal (String s)     = marshal $ B.drop 8 $ encode s
+  marshal (Identifier s) = marshal $ String s
   marshal (Number n)     = marshal n
+  marshal None           = B.empty
   marshal _              = undefined
 
 instance MarshalWithType AST where
   typeChar (String _)     = 'u'
   typeChar (Identifier _) = 'u'
   typeChar (Number _)     = 'i'
-  typeChar _              = undefined
+  typeChar None           = 'N'
+  typeChar x              = error $ "no typeChar for " ++ show x
 
 instance MarshalWithType a => Marshal [a] where
-  marshal xs = B.append (marshal $ toInteger $ length xs) (B.concat $ marshalWithType <$> xs)
+  marshal xs = B.append (marshal @Int32 $ fromIntegral $ length xs) (B.concat $ marshalWithType <$> xs)
 
 instance MarshalWithType a => MarshalWithType [a] where
   typeChar = const '('

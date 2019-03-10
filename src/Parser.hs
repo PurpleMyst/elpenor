@@ -1,7 +1,10 @@
 module Parser(parse) where
+-- FIXME: Better errors!!!
 
+import Prelude hiding (fail)
 import Control.Applicative
-import Control.Monad
+import Control.Monad hiding (fail)
+import Control.Monad.Fail
 import Data.Char
 import Data.Foldable
 import Data.Functor
@@ -35,11 +38,11 @@ instance Monad Parser where
       Left e        -> Left e
       Right (x, z') -> let (Parser f') = g x in f' z'
 
-  -- FIXME: Add instance MonadFail Parser
-  fail s = Parser $ \_ -> Left s
+instance MonadFail Parser where
+  fail = Parser . const . Left
 
 instance Alternative Parser where
-  empty = Parser (\_ -> Left "")
+  empty = fail ""
   (Parser f) <|> (Parser g) = Parser $ \z -> case f z of
     Left _        -> g z
     Right (x, z') -> Right (x, z')
@@ -106,26 +109,26 @@ string = char '"' *> fmap AST.String (parseContents False)
             fmap (:) anyChar <*> parseContents False
 
 functionCall :: Parser AST
-functionCall =
-    (FunctionCall <$> ignoreWs identifier) <* 
-    char '(' <*> 
-    parseArgs
+functionCall = do
+    fname <- ignoreWs identifier
+    _ <- char '('
+    FunctionCall fname <$> parseArgs
   where
-    parseArgs = ignoreWs expression >>= \e -> ([e] <$ char ')') <|> (char ',' >> fmap (e : ) parseArgs)
+    parseArgs = ignoreWs expression >>= \e -> ([e] <$ char ')') <|> (char ',' >> ((e : ) <$> parseArgs))
 
 expression :: Parser AST
 expression = asum [functionCall, identifier, number, string]
 
 assignment :: Parser AST
-assignment =
-  ignoreWs (token "let") *>
-  (Assignment <$> ignoreWs identifier) <*
-  ignoreWs (char '=') <*>
-  ignoreWs expression
-
+assignment = do
+  _ <- ignoreWs (token "let")
+  Identifier lhs <- ignoreWs identifier
+  _ <- ignoreWs (char '=')
+  rhs <- ignoreWs expression
+  return $ Assignment lhs rhs
 
 statement :: Parser AST
-statement = asum [assignment, functionCall]
+statement = asum [assignment, functionCall] <* char ';'
 
 program :: Parser AST
 program = Program <$> many statement

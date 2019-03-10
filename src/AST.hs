@@ -1,9 +1,12 @@
-module AST where
+module AST(AST(..)) where
+
+import Data.Int
 
 data AST = Identifier String
-         | Number Integer
+         | Number Int32
          | String String
-         | Assignment AST AST
+         | Assignment String AST
          | FunctionCall AST [AST]
+         | None
          | Program [AST]
          deriving (Show, Eq)

@@ -2,27 +2,28 @@
 module Compiler where
 
 import Control.Monad.State.Lazy
-import Data.ByteString.Lazy (ByteString)
+import Data.Int
 import Data.List
 import Data.Word
+import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as B
 
 import AST
 import Parser
 
 data CodeObject = CodeObject
-                { co_argcount       :: Integer
-                , co_kwonlyargcount :: Integer
-                , co_nlocals        :: Integer
-                , co_stacksize      :: Integer
-                , co_flags          :: Integer
+                { co_argcount       :: Int32
+                , co_kwonlyargcount :: Int32
+                , co_nlocals        :: Int32
+                , co_stacksize      :: Int32
+                , co_flags          :: Int32
                 , co_code           :: ByteString
                 , co_consts         :: [AST]
                 , co_names          :: [String]
                 , co_varnames       :: [String]
                 , co_filename       :: String
                 , co_name           :: String
-                , co_firstlineno    :: Integer
+                , co_firstlineno    :: Int32
                 , co_lnotab         :: ByteString
                 , co_freevars       :: [String]
                 , co_cellvars       :: [String]
@@ -148,7 +149,7 @@ opcode "FORMAT_VALUE" = 155
 opcode "BUILD_CONST_KEY_MAP" = 156
 opcode "BUILD_STRING" = 157
 opcode "BUILD_TUPLE_UNPACK_WITH_CALL" = 158
-opcode _ = undefined
+opcode _ = error "unknown opcode"
 -- }}}
 
 
@@ -186,15 +187,15 @@ addConst ast = do
 
 compile' :: AST -> State CodeObject ()
 
--- FIXME: Add a 'return None'
-compile' (Program xs) = mapM_ compile' xs
+compile' (Program xs) = mapM_ compile' xs >> addConst None >>= addOpcode "RETURN_VALUE"
 
-compile' (Assignment _ _ ) = undefined
+compile' (Assignment name rhs) = compile' rhs >> addName name >>= addOpcode "STORE_NAME"
 
 compile' (Identifier name) = addName name >>= addOpcode "LOAD_NAME"
 
 compile' ast@(Number _) = addConst ast >>= addOpcode "LOAD_CONST"
 compile' ast@(String _) = addConst ast >>= addOpcode "LOAD_CONST"
+compile' ast@None       = addConst ast >>= addOpcode "LOAD_CONST"
 
 compile' (FunctionCall name args) = do
   compile' name
@@ -205,7 +206,7 @@ compile' (FunctionCall name args) = do
 compile :: String -> CodeObject
 compile = cleanUp . flip execState co . compile' . parse
   where
-    cleanUp co' = co' { co_code     = B.reverse (co_code co)
+    cleanUp co' = co' { co_code     = B.reverse (co_code co')
                       , co_names    = reverse   (co_names co')
                       , co_consts   = reverse   (co_consts co')
                       , co_varnames = reverse   (co_varnames co')

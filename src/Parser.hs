@@ -48,12 +48,16 @@ instance Alternative Parser where
     Right (x, z') -> Right (x, z')
 
 anyChar :: Parser Char
-anyChar = Parser $ \z -> Right (Z.current z, Z.zipRight z)
+anyChar = Parser $ \z -> case Z.maybeCurrent z of 
+    Just c  -> Right (c, Z.zipRight z)
+    Nothing -> Left "Expected char, found EOF"
 
 char :: Char -> Parser Char
-char c = Parser $ \z -> if Z.maybeCurrent z == Just c
-                        then Right (c, Z.zipRight z)
-                        else Left $ "Expected '" ++ [c] ++ "' at index " ++ show (Z.getOffset z) ++ ", found '" ++ show (Z.maybeCurrent z) ++ "'"
+char c = do
+    c' <- anyChar
+    if c == c'
+      then return c
+      else fail $ "Expected '" ++ show c ++ ", found '" ++ show c' ++ "'"
 
 word :: Parser String
 word = Parser.takeWhile (not . isSpace)
@@ -139,6 +143,6 @@ parse s = case runParser program s of
     Left e          -> error e
     Right (ast, z)  -> if null (Z.right z)
                          then ast
-                         else error (show $ runParser statement s)
+                         else error $ show $ runParser statement s
 
 -- vim: foldmethod=marker

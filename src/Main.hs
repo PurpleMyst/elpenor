@@ -5,6 +5,7 @@ import Compiler
 import Marshal
 
 import System.IO
+import System.Environment
 import qualified Data.ByteString.Lazy.Char8 as B
 
 writeCodeObject :: String -> CodeObject -> IO ()
@@ -19,6 +20,4 @@ writeCodeObject fname co = do
 
 main :: IO ()
 main =
-    writeCodeObject "elpenor.pyc" co
-  where
-    co = compile "let x = 3; print(\"x =\", x);"
+    getArgs >>= (readFile . head) >>= (writeCodeObject "elpenor.pyc" . compile)

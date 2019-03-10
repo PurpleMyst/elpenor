@@ -13,12 +13,15 @@ right (Zipper _ r) = reverse r
 
 zipRight :: Zipper a -> Zipper a
 zipRight (Zipper l (x:r)) = Zipper (x : l) r
+zipRight (Zipper _ [])    = error "can't zip right"
 
 zipLeft :: Zipper a -> Zipper a
 zipLeft (Zipper (x:l) r) = Zipper l (x : r)
+zipLeft (Zipper []    _) =  error "can't zip left"
 
 current :: Zipper a -> a
 current (Zipper _ (x:_)) = x
+current (Zipper _ [])    = error "can't get current"
 
 maybeCurrent :: Zipper a -> Maybe a
 maybeCurrent (Zipper _ (x:_)) = Just x
@@ -34,7 +37,7 @@ setOffset n z
   where
     d = n - getOffset z
 
-    goLeft 0 z  = z
-    goLeft n z  = goLeft (n - 1) (zipLeft z)
-    goRight 0 z = z
-    goRight n z = goRight (n - 1) (zipRight z)
+    goLeft 0 z'   = z'
+    goLeft n' z'  = goLeft (n' - 1) (zipLeft z')
+    goRight 0 z'  = z'
+    goRight n' z' = goRight (n' - 1) (zipRight z')

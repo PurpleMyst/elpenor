@@ -3,11 +3,8 @@ module Parser(parse) where
 import Control.Applicative
 import Control.Monad
 import Data.Char
-import Data.Either
 import Data.Foldable
 import Data.Functor
-import Data.Maybe
-import Debug.Trace
 
 import AST
 import qualified Zipper as Z
@@ -46,9 +43,6 @@ instance Alternative Parser where
   (Parser f) <|> (Parser g) = Parser $ \z -> case f z of
     Left _        -> g z
     Right (x, z') -> Right (x, z')
-
-getText :: Parser ZString
-getText = Parser $ \z -> Right (z, z)
 
 anyChar :: Parser Char
 anyChar = Parser $ \z -> Right (Z.current z, Z.zipRight z)

@@ -3,14 +3,9 @@ module Compiler where
 
 import Control.Monad.State.Lazy
 import Data.ByteString.Lazy (ByteString)
-import Data.Char
-import Debug.Trace
-import Data.Default
 import Data.List
-import Data.Map (Map)
 import Data.Word
 import qualified Data.ByteString.Lazy as B
-import qualified Data.Map as M
 
 import AST
 import Parser
@@ -31,29 +26,8 @@ data CodeObject = CodeObject
                 , co_lnotab         :: ByteString
                 , co_freevars       :: [String]
                 , co_cellvars       :: [String]
-                }
-
-
-instance Show CodeObject where
-  show co = "__import__(\"types\").CodeType("  ++
-    show (co_argcount       co) ++ ", " ++
-    show (co_kwonlyargcount co) ++ ", " ++
-    show (co_nlocals        co) ++ ", " ++
-    show (co_stacksize      co) ++ ", " ++
-    show (co_flags          co) ++ ", " ++
-    "bytes(" ++ show (B.unpack $ co_code co) ++ ")" ++ ", " ++
-    show (co_consts         co) ++ ", " ++
-    show (co_names          co) ++ ", " ++
-    show (co_varnames       co) ++ ", " ++
-    show (co_filename       co) ++ ", " ++
-    show (co_name           co) ++ ", " ++
-    show (co_firstlineno    co) ++ ", " ++
-    show (co_lnotab         co) ++ ", " ++
-    show (co_freevars       co) ++ ", " ++
-    show (co_cellvars       co) ++
-    ")"
-
-
+                } deriving Show
+--
 -- opcode {{{
 opcode :: String -> Word8
 opcode "POP_TOP" = 1
@@ -174,17 +148,19 @@ opcode "FORMAT_VALUE" = 155
 opcode "BUILD_CONST_KEY_MAP" = 156
 opcode "BUILD_STRING" = 157
 opcode "BUILD_TUPLE_UNPACK_WITH_CALL" = 158
+opcode _ = undefined
 -- }}}
 
 
-addOpcode :: Integral a => String -> a -> State CodeObject ()
 -- NB: Opcode/arg must be reversed so that they are correct later.
-addOpcode opname arg = modify (\co -> co { co_code = B.cons (fromIntegral arg) $ B.cons (opcode opname) $ co_code co })
+addOpcode :: Integral a => String -> a -> State CodeObject ()
+addOpcode (opcode -> o) (fromIntegral -> arg) =
+  modify (\co -> co { co_code = B.cons arg $ B.cons o $ co_code co })
 
 minimumStackSize :: (Integral a) => a -> State CodeObject ()
 minimumStackSize (fromIntegral -> n) = modify (\co -> co { co_stacksize = if co_stacksize co < n then n else co_stacksize co })
 
-addName :: Integral a => String -> State CodeObject a
+addName :: String -> State CodeObject Int
 addName name = do
     co <- get
 
@@ -196,21 +172,24 @@ addName name = do
         put $ co { co_names = name : co_names co }
         return $ fromIntegral $ length (co_names co)
 
-addConst :: Integral a => AST -> State CodeObject a
+addConst :: AST -> State CodeObject Int
 addConst ast = do
     co <- get
     if ast `elem` co_consts co
       then do
         let Just idx = ast `elemIndex` co_consts co
-        return $ fromIntegral $ length (co_consts co) - (idx + 1)
+        return $ length (co_consts co) - (idx + 1)
       else do
         put $ co { co_consts = ast : co_consts co }
-        return $ fromIntegral $ length (co_consts co)
+        return $ length (co_consts co)
 
 
 compile' :: AST -> State CodeObject ()
 
-compile' (Program xs) = mapM_ compile' xs >> addOpcode "RETURN_VALUE" 0
+-- FIXME: Add a 'return None'
+compile' (Program xs) = mapM_ compile' xs
+
+compile' (Assignment _ _ ) = undefined
 
 compile' (Identifier name) = addName name >>= addOpcode "LOAD_NAME"
 
@@ -221,16 +200,19 @@ compile' (FunctionCall name args) = do
   compile' name
   mapM_ compile' args
   minimumStackSize (length args + 1)
-  addOpcode "CALL_FUNCTION" (fromIntegral $ length args)
+  addOpcode "CALL_FUNCTION" (fromIntegral $ length args :: Integer)
 
 compile :: String -> CodeObject
 compile = cleanUp . flip execState co . compile' . parse
   where
-    -- FIXME: Pretty much need to reverse *everything*
-    cleanUp co = co { co_code = B.reverse (co_code co)
-                    , co_names = reverse (co_names co)
-                    , co_consts = reverse (co_consts co)
-                    }
+    cleanUp co' = co' { co_code     = B.reverse (co_code co)
+                      , co_names    = reverse   (co_names co')
+                      , co_consts   = reverse   (co_consts co')
+                      , co_varnames = reverse   (co_varnames co')
+                      , co_lnotab   = B.reverse (co_lnotab co')
+                      , co_freevars = reverse   (co_freevars co')
+                      , co_cellvars = reverse   (co_cellvars co')
+                      }
 
     co = CodeObject
                 { co_argcount       = 0

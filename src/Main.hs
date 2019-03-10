@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import Compiler
@@ -6,11 +7,18 @@ import Marshal
 import System.IO
 import qualified Data.ByteString.Lazy.Char8 as B
 
+writeCodeObject :: String -> CodeObject -> IO ()
+writeCodeObject fname co = do
+  h <- openBinaryFile fname WriteMode
+  -- FIXME: Calculate the magic number instead of hard-coding it.
+  B.hPut h "B\r\r\n"
+  -- XXX: Do these actually mean anything? `run_pyc_file` ignores them
+  B.hPut h "\0\0\0\0\0\0\0\0\0\0\0\0"
+  B.hPut h $ marshalWithType co
+  hClose h
+
 main :: IO ()
-main = do
-    h <- openBinaryFile "compiled.dat" WriteMode
-    --print (co_code co)
-    B.hPut h (marshalWithType co)
-    hClose h
+main =
+    writeCodeObject "elpenor.pyc" co
   where
-    co = compile "let x = 3; print(x);"
+    co = compile "let x = 3; print(\"x =\", x);"

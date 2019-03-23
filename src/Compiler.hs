@@ -198,10 +198,10 @@ compile' ast@(String _) = addConst ast >>= addOpcode "LOAD_CONST"
 compile' ast@None       = addConst ast >>= addOpcode "LOAD_CONST"
 
 compile' (FunctionCall name args) = do
-  compile' name
-  mapM_ compile' args
-  minimumStackSize (length args + 1)
-  addOpcode "CALL_FUNCTION" (fromIntegral $ length args :: Integer)
+    compile' name
+    mapM_ compile' args
+    minimumStackSize (length args + 1)
+    addOpcode "CALL_FUNCTION" (fromIntegral $ length args :: Integer)
 
 compile :: String -> CodeObject
 compile = cleanUp . flip execState co . compile' . parse

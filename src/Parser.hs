@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, LambdaCase, MultiWayIf #-}
+{-# LANGUAGE ViewPatterns, MultiWayIf #-}
 module Parser where
 
 import Prelude hiding (fail)

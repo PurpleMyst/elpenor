@@ -2,6 +2,7 @@
 module Main where
 
 import Compiler
+import CodeObject
 import Marshal
 
 import System.IO

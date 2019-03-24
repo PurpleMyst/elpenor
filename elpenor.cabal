@@ -46,7 +46,7 @@ library
     hs-source-dirs: src
 
     exposed: False
-    exposed-modules: Marshal AST Compiler Parser Zipper
+    exposed-modules: Marshal AST Compiler Parser Zipper CodeObject Opcode
 
     default-language: Haskell2010
 
@@ -55,7 +55,7 @@ executable elpenor
   main-is:             Main.hs
 
   -- Modules included in this executable, other than Main.
-  other-modules: AST Compiler Parser Marshal Zipper
+  other-modules: AST Compiler Parser Marshal Zipper CodeObject Opcode
 
   -- LANGUAGE extensions used by modules in this package.
   other-extensions: ViewPatterns

@@ -35,19 +35,6 @@ spec = parallel $ do
     it "should marshal arbitrary values of type Int32" $
       propertyIO (\n -> (show n ==) <$> marshalRoundTrip (n :: Int32))
 
-  describe "MarshalWithType AST" $ do
-    it "should marshal AST values of type Identifier" $
-      propertyIO (\s -> (s ==) <$> marshalRoundTrip (Identifier s))
-
-    it "should marshal AST values of type String" $
-      propertyIO (\s -> (s ==) <$> marshalRoundTrip (String s))
-
-    it "should marshal AST values of type Number" $
-      propertyIO (\n -> (show n ==) <$> marshalRoundTrip (Number n))
-
-  describe "MarshalWithType a => MarshalWithType [a]" $ do
+  describe "MarshalWithType a => MarshalWithType [a]" $
     it "should marshal values of type [Int32]" $
       marshalRoundTrip ([1, 2, 3] :: [Int32]) `shouldReturn` "(1, 2, 3)"
-
-    it "should marshal values of type [AST]" $
-      marshalRoundTrip [Number 3, String "foo", Number 5, Identifier "bar"] `shouldReturn` "(3, 'foo', 5, 'bar')"
